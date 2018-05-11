@@ -186,7 +186,7 @@ qiime phylogeny midpoint-root \
 qiime diversity core-metrics-phylogenetic \
   --i-phylogeny samA-denovo-rooted-tree.qza \
   --i-table samA-denovo-filtered-table.qza \
-  --p-sampling-depth 1 \
+  --p-sampling-depth 10 \
   --m-metadata-file Sample_metadata2.txt \
   --output-dir samA-denovo-core-metrics-results
 
@@ -204,21 +204,23 @@ qiime diversity alpha-rarefaction \
 ############################# Deblur #######################################
 ############################################################################
 
+#### don't use this section for now, deblur I don't especially trust #######
+
 # this takes the joined paired ends as input
 # first a light quality filter #
 
-qiime quality-filter q-score-joined \
---i-demux samA-data-joined.qza \
---o-filtered-sequences samA-qtrimmed-seqs-deblur \
---o-filter-stats samA-qtrim-stats-deblur \
---verbose
+#qiime quality-filter q-score-joined \
+#--i-demux samA-data-joined.qza \
+#--o-filtered-sequences samA-qtrimmed-seqs-deblur \
+#--o-filter-stats samA-qtrim-stats-deblur \
+#--verbose
 
 # dereplicating, making feature table to reduce computational load #
 
-qiime vsearch dereplicate-sequences \
-  --i-sequences samA-qtrimmed-seqs-deblur.qza \
-  --o-dereplicated-table samA-deblur-qtrimmed-derep-table \
-  --o-dereplicated-sequences samA-deblur-qtrimmed-derep-seqs
+#qiime vsearch dereplicate-sequences \
+#  --i-sequences samA-qtrimmed-seqs-deblur.qza \
+#  --o-dereplicated-table samA-deblur-qtrimmed-derep-table \
+#  --o-dereplicated-sequences samA-deblur-qtrimmed-derep-seqs
 
 #the deblur denoising is mainly an error correction "true" read determination
 #it is supposedly not designed for joined sequences or even for paired end
@@ -231,32 +233,32 @@ qiime vsearch dereplicate-sequences \
 ###########################################################################################
 # CONTINUE EDITING PIPELINE HERE ####################################
 
-qiime deblur denoise \
---i-demultiplexed-seqs samA-qtrimmed-seqs-deblur.qza \
---p-trim-length 380 \
---p-sample-stats \
---p-jobs-to-start 24 \
---o-representative-sequences samA-deblur-rep-seqs \
---o-table samA-deblur-table \
---o-stats samA-deblur-stats
+#qiime deblur denoise \
+#--i-demultiplexed-seqs samA-qtrimmed-seqs-deblur.qza \
+#--p-trim-length 380 \
+#--p-sample-stats \
+#--p-jobs-to-start 24 \
+#--o-representative-sequences samA-deblur-rep-seqs \
+#--o-table samA-deblur-table \
+#--o-stats samA-deblur-stats
 
 #then we can simply classify using the same method
 
-qiime feature-classifier classify-sklearn \
-  --i-classifier classifier.qza \
-  --p-n-jobs 24 \
-  --i-reads samA-deblur-rep-seqs.qza \
-  --o-classification samA-deblur-taxonomy
+#qiime feature-classifier classify-sklearn \
+#  --i-classifier classifier.qza \
+#  --p-n-jobs 24 \
+#  --i-reads samA-deblur-rep-seqs.qza \
+#  --o-classification samA-deblur-taxonomy
 
-qiime metadata tabulate \
-  --m-input-file samA-deblur-taxonomy.qza \
-  --o-visualization samA-deblur-taxonomy.qzv
+#qiime metadata tabulate \
+#  --m-input-file samA-deblur-taxonomy.qza \
+#  --o-visualization samA-deblur-taxonomy.qzv
 
-qiime taxa barplot \
-  --i-table samA-deblur-table.qza \
-  --i-taxonomy samA-deblur-taxonomy.qza \
-  --m-metadata-file Sample_metadata2.txt \
-  --o-visualization samA-deblur-taxa-bar-plots.qzv
+#qiime taxa barplot \
+#  --i-table samA-deblur-table.qza \
+#  --i-taxonomy samA-deblur-taxonomy.qza \
+#  --m-metadata-file Sample_metadata2.txt \
+#  --o-visualization samA-deblur-taxa-bar-plots.qzv
 
 ############################################################################
 # the dada2 pipeline, results in an otu table which can then be classified #
@@ -269,7 +271,7 @@ qiime dada2 denoise-paired \
 --i-demultiplexed-seqs samA-data-cutadapt.qza \
 --o-table samA-dada2-table \
 --o-representative-sequences samA-dada2_seqs \
---p-n-threads 0 \
+--p-n-threads 4 \
 --p-trunc-len-f 250 \
 --p-trunc-len-r 200
 
@@ -278,21 +280,21 @@ qiime feature-table summarize \
 --o-visualization samA-dada2-seq-stats \
 --verbose
 
-qiime feature-classifier classify-sklearn \
-  --i-classifier classifier.qza \
-  --i-reads samA-dada2_seqs.qza \
-  --p-n-jobs 24 \
-  --o-classification samA-dada2-taxonomy
+#qiime feature-classifier classify-sklearn \
+#  --i-classifier classifier.qza \
+#  --i-reads samA-dada2_seqs.qza \
+#  --p-n-jobs 24 \
+#  --o-classification samA-dada2-taxonomy
 
 qiime metadata tabulate \
   --m-input-file samA-dada2-taxonomy.qza \
   --o-visualization samA-dada2-taxonomy
 
-qiime taxa barplot \
-  --i-table samA-dada2-table.qza \
-  --i-taxonomy samA-dada2-taxonomy.qza \
-  --m-metadata-file Sample_metadata2.txt \
-  --o-visualization samA-dada2-taxa-bar-plots
+#qiime taxa barplot \
+#  --i-table samA-dada2-table.qza \
+#  --i-taxonomy samA-dada2-taxonomy.qza \
+#  --m-metadata-file Sample_metadata2.txt \
+#  --o-visualization samA-dada2-taxa-bar-plots
 
 # this is removing samples at a low frequency count that I calculated
 # independently (5% of median)
@@ -301,31 +303,31 @@ qiime taxa barplot \
 
 # THIS MUST BE CUSTOMIZED AND IS SUBJECTIVE #
 
-qiime feature-table filter-samples \
-  --i-table samA-dada2-table.qza \
-  --p-min-frequency 1200 \
-  --o-filtered-table samA-dada2-table-lowcountfilter
+#qiime feature-table filter-samples \
+#  --i-table samA-dada2-table.qza \
+#  --p-min-frequency 1200 \
+#  --o-filtered-table samA-dada2-table-lowcountfilter
 
-qiime feature-table summarize \
-  --i-table samA-dada2-table-lowcountfilter.qza \
-  --o-visualization samA-dada2-table-lowcountfilter.qzv
+#qiime feature-table summarize \
+#  --i-table samA-dada2-table-lowcountfilter.qza \
+#  --o-visualization samA-dada2-table-lowcountfilter.qzv
 
 # rebuilding the barplots with the lowcountfilter #
 
-qiime taxa barplot \
-  --i-table samA-dada2-table-lowcountfilter.qza \
-  --i-taxonomy samA-dada2-taxonomy.qza \
-  --m-metadata-file Sample_metadata2.txt \
-  --o-visualization samA-dada2-taxa-bar-plots-lowcountfiltered
+#qiime taxa barplot \
+#  --i-table samA-dada2-table-lowcountfilter.qza \
+#  --i-taxonomy samA-dada2-taxonomy.qza \
+#  --m-metadata-file Sample_metadata2.txt \
+#  --o-visualization samA-dada2-taxa-bar-plots-lowcountfiltered
 
 ########### DIVERSITY METRICS FOR DADA2 AFTER LOW COUNT FILTERING ########
 
 # work towards alpha diversity analysis, first build a tree #
 
-qiime feature-table summarize \
-  --i-table samA-dada2-table-lowcountfilter.qza \
-  --o-visualization samA-dada2-table-lowcountfilter.qzv \
-  --m-sample-metadata-file Sample_metadata2.txt
+#qiime feature-table summarize \
+#  --i-table samA-dada2-table-lowcountfilter.qza \
+#  --o-visualization samA-dada2-table-lowcountfilter.qzv \
+#  --m-sample-metadata-file Sample_metadata2.txt
 
 qiime feature-table tabulate-seqs \
   --i-data samA-dada2_seqs.qza \
@@ -355,7 +357,7 @@ qiime phylogeny midpoint-root \
 qiime diversity core-metrics-phylogenetic \
   --i-phylogeny samA-rooted-tree-dada2.qza \
   --i-table samA-dada2-table-lowcountfilter.qza \
-  --p-sampling-depth 500 \
+  --p-sampling-depth 10 \
   --m-metadata-file Sample_metadata2.txt \
   --output-dir samA-core-metrics-results-dada2
 
@@ -368,16 +370,4 @@ qiime diversity alpha-rarefaction \
   --p-max-depth 300000 \
   --m-metadata-file Sample_metadata2.txt \
   --o-visualization samA-open-alpha-rarefaction-dada2.qzv
-© 2018 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Help
-Contact GitHub
-API
-Training
-Shop
-Blog
-About
-Press h to open a hovercard with more details.
+
