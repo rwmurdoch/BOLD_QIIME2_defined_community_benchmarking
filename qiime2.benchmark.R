@@ -86,6 +86,7 @@ qiime vsearch join-pairs \
 
 #1#
 #this is a strict quality filtering#
+#any sequence with a base with lower than PHRED25 is removed#
 
 qiime quality-filter q-score-joined \
 --i-demux samA-data-joined.qza \
@@ -100,133 +101,107 @@ qiime quality-filter q-score-joined \
 
 qiime vsearch dereplicate-sequences \
   --i-sequences samA-seqs-strict-qtrim.qza \
-  --o-dereplicated-table samA-open-derep-table \
-  --o-dereplicated-sequences samA-open-derep-seqs
+  --o-dereplicated-table samA-denovo-derep-table \
+  --o-dereplicated-sequences samA-denovo-derep-seqs
 
 #4#
 # chimera removal #
 
 qiime vsearch uchime-denovo \
-  --i-sequences samA-open-derep-seqs.qza \
-  --i-table samA-open-derep-table.qza \
-  --o-chimeras samA-open-chimera-seqs \
-  --o-nonchimeras samA-open-nonchimera-seqs \
-  --o-stats samA-open-chimera-stats
+  --i-sequences samA-denovo-derep-seqs.qza \
+  --i-table samA-denovo-derep-table.qza \
+  --o-chimeras samA-denovo-chimera-seqs \
+  --o-nonchimeras samA-denovo-nonchimera-seqs \
+  --o-stats samA-denovo-chimera-stats
 
 # 6 #
 # after separating chimeras, i have to filter the input data, removing chimeras#
 
 qiime feature-table filter-features \
-  --i-table samA-open-derep-table.qza \
-  --m-metadata-file samA-open-chimera-seqs.qza \
+  --i-table samA-denovo-derep-table.qza \
+  --m-metadata-file samA-denovo-chimera-seqs.qza \
   --p-exclude-ids \
-  --o-filtered-table samA-open-filtered-table.qza
+  --o-filtered-table samA-denovo-filtered-table.qza
 
 qiime feature-table filter-seqs \
-  --i-data samA-open-derep-seqs.qza \
-  --m-metadata-file samA-open-chimera-seqs.qza \
+  --i-data samA-denovo-derep-seqs.qza \
+  --m-metadata-file samA-denovo-chimera-seqs.qza \
   --p-exclude-ids \
-  --o-filtered-data samA-open-filtered-seqs.qza
+  --o-filtered-data samA-denovo-filtered-seqs.qza
 
 qiime feature-table summarize \
-  --i-table samA-open-filtered-table.qza \
-  --o-visualization samA-open-filtered-table.qzv
+  --i-table samA-denovo-filtered-table.qza \
+  --o-visualization samA-denovo-filtered-table.qzv
 
 #3#
 #this is the clustering but does not actually create a taxonomy table#
 #essentially, clusters are created primarily using the ref database as seed
 
-qiime vsearch cluster-features-open-reference \
---i-sequences samA-open-filtered-seqs.qza \
---i-table samA-open-filtered-table.qza \
+##### I should also run a 98.5% clustering here #####
+
+qiime vsearch cluster-features-de-novo \
+--i-sequences samA-denovo-filtered-seqs.qza \
+--i-table samA-denovo-filtered-table.qza \
 --i-reference-sequences silva_128_97.qza \
 --p-perc-identity 0.97 \
 --p-threads 24 \
---o-clustered-table samA-open-OTU-table \
---o-clustered-sequences samA-open-OTU-seqs \
---o-new-reference-sequences samA-open-OTU-ref-seqs
+--o-clustered-table samA-denovo-OTU-table \
+--o-clustered-sequences samA-denovo-OTU-seqs \
+--o-new-reference-sequences samA-denovo-OTU-ref-seqs
 
-
-
-
-
-# 5 #
-# sequence taxonomic classification #
-
-qiime feature-classifier classify-sklearn \
---i-classifier classifier.qza \
---p-n-jobs 2 \
---i-reads samA-open-OTU-seqs.qza \
---o-classification samA-open-OTU-taxonomy
-
-
-
-
-# 6 #
-# make bar charts #
-
-qiime metadata tabulate \
-  --m-input-file Sample_metadata2.txt \
-  --o-visualization samA-open-OTU-taxonomy.qzv
-
-qiime taxa barplot \
-  --i-table samA-open-filtered-table.qza \
-  --i-taxonomy samA-open-OTU-taxonomy.qza \
-  --m-metadata-file Sample_metadata2.txt \
-  --o-visualization samA-open-taxa-bar-plots.qzv
 
 # 7 #
 # work towards alpha diversity analysis, first build a tree #
 
 qiime feature-table summarize \
-  --i-table samA-open-filtered-table.qza \
-  --o-visualization samA-open-filtered-table.qzv \
+  --i-table samA-denovo-filtered-table.qza \
+  --o-visualization samA-denovo-filtered-table.qzv \
   --m-sample-metadata-file Sample_metadata2.txt
 
 qiime feature-table tabulate-seqs \
-  --i-data samA-open-filtered-ref-seqs.qza \
-  --o-visualization samA-open-filtered-ref-seqs.qzv
+  --i-data samA-denovo-filtered-ref-seqs.qza \
+  --o-visualization samA-denovo-filtered-ref-seqs.qzv
 
 qiime alignment mafft \
-  --i-sequences samA-open-OTU-filtered-ref-seqs.qza \
-  --o-alignment samA-open-aligned.qza \
+  --i-sequences samA-denovo-OTU-filtered-ref-seqs.qza \
+  --o-alignment samA-denovo-aligned.qza \
   --p-n-threads 24
 
 qiime alignment mask \
-  --i-alignment samA-open-aligned.qza \
-  --o-masked-alignment samA-open-aligned-masked.qza
+  --i-alignment samA-denovo-aligned.qza \
+  --o-masked-alignment samA-denovo-aligned-masked.qza
 
 qiime phylogeny fasttree \
-  --i-alignment samA-open-aligned-masked.qza \
-  --o-tree samA-unrooted-tree.qza
+  --i-alignment samA-denovo-aligned-masked.qza \
+  --o-tree samA-denovo-unrooted-tree.qza
 
 qiime phylogeny midpoint-root \
---i-tree samA-unrooted-tree.qza \
---o-rooted-tree samA-rooted-tree.qza
+--i-tree samA-denovo-unrooted-tree.qza \
+--o-rooted-tree samA-denovo-rooted-tree.qza
 
 # 8 #
 # generate core diversity metrics #
 # pay close attention to the sampling depth command #
 
 qiime diversity core-metrics-phylogenetic \
-  --i-phylogeny samA-rooted-tree.qza \
-  --i-table samA-open-filtered-table.qza \
-  --p-sampling-depth 500 \
+  --i-phylogeny samA-denovo-rooted-tree.qza \
+  --i-table samA-denovo-filtered-table.qza \
+  --p-sampling-depth 1 \
   --m-metadata-file Sample_metadata2.txt \
-  --output-dir samA-core-metrics-results
+  --output-dir samA-denovo-core-metrics-results
 
 ## visualization of diversity metrics ##
 
 qiime diversity alpha-rarefaction \
-  --i-table samA-open-filtered-table.qza \
-  --i-phylogeny samA-rooted-tree.qza \
+  --i-table samA-denovo-filtered-table.qza \
+  --i-phylogeny samA-denovo-rooted-tree.qza \
   --p-min-depth 1 \
   --p-max-depth 20000 \
   --m-metadata-file Sample_metadata2.txt \
-  --o-visualization samA-open-alpha-rarefaction.qzv
+  --o-visualization samA-denovo-alpha-rarefaction.qzv
 
 ############################################################################
-############################# Deblur16S ####################################
+############################# Deblur #######################################
 ############################################################################
 
 # this takes the joined paired ends as input
@@ -245,12 +220,18 @@ qiime vsearch dereplicate-sequences \
   --o-dereplicated-table samA-deblur-qtrimmed-derep-table \
   --o-dereplicated-sequences samA-deblur-qtrimmed-derep-seqs
 
-#the deblur denoising is doing two main things, error correction and 16s pattern
-#detection.
+#the deblur denoising is mainly an error correction "true" read determination
 #it is supposedly not designed for joined sequences or even for paired end
-#but qiime2 allows it; use with caution I suppose
+#it also must have a set of "positive" sequences, so as to remove junk?
+#This is problematic for me... I would have to cluster the BOLD database and thus make some 
+#reduced data set
+#but qiime2 allows it; use with caution I suppose?
+#an 88% clustering of the BOLD database would be equivalent to the 16S implementation
 
-qiime deblur denoise-16S \
+###########################################################################################
+# CONTINUE EDITING PIPELINE HERE ####################################
+
+qiime deblur denoise \
 --i-demultiplexed-seqs samA-qtrimmed-seqs-deblur.qza \
 --p-trim-length 380 \
 --p-sample-stats \
